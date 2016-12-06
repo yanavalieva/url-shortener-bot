@@ -17,6 +17,11 @@ library
   hs-source-dirs:      src
   exposed-modules:     Lib
   build-depends:       base >= 4.7 && < 5
+                     , telegram-api
+                     , http-client
+                     , http-client-tls
+                     , http-types
+                     , bytestring
   default-language:    Haskell2010
 
 executable url-shortener-bot-exe
