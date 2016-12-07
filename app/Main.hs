@@ -13,10 +13,11 @@ import System.Environment(getEnv)
 import qualified Control.Exception as E
 import System.IO.Error(isDoesNotExistError)
 
-import Data.String(fromString)
+import Data.String(fromString, IsString)
 
 import Data.Either
-import Data.Text
+import Data.Maybe
+import Data.Text(Text)
 
 import Control.Monad(liftM)
 import Control.Monad.State
@@ -29,41 +30,66 @@ import TinyUrl
 data BotConfig = BotConfig {
         stManager :: Manager
       , stToken :: Token
+      , stOffset  :: Maybe Int
     }
+
+type Bot a = StateT BotConfig IO a
 
 createBotConfig :: IO BotConfig
 createBotConfig = do
   token <- liftM (Token . fromString) $ getEnv "TELEGRAM_TOKEN" `E.catch` returnDefaultToken
+  print token
   manager <- newManager tlsManagerSettings
-  return $ BotConfig { stManager = manager
-                     , stToken = token }
+  return BotConfig { stManager = manager
+                   , stToken = token
+                   , stOffset = Nothing }
   where
     returnDefaultToken :: E.IOException -> IO String
     returnDefaultToken e
-      | isDoesNotExistError e = return "326648651:AAFwwJ1hMj0T1zBYGyOz0uJOFvyXgibSKdc"
+      | isDoesNotExistError e = return defaultToken
       | otherwise = E.throw e
-
-type Bot a = StateT BotConfig IO a
+    defaultToken = "bot326648651:AAFwwJ1hMj0T1zBYGyOz0uJOFvyXgibSKdc"
 
 getBotUpd :: Bot (Either ServantError UpdatesResponse)
 getBotUpd = do
   s <- get
-  res <- liftIO $ getUpdates (stToken s) Nothing Nothing Nothing (stManager s)
-  return res
+  liftIO $ getUpdates (stToken s) (stOffset s) Nothing (Just 10) (stManager s)
 
-getTextMessage :: Maybe Message -> Maybe Text
-getTextMessage (Just (Message { text = t })) = t
-getTextMessage _ = Nothing
+sendBotMessage :: String -> Text -> Bot (Either ServantError MessageResponse)
+sendBotMessage chatId txt = do
+  s <- get
+  let msgReq = sendMessageRequest (fromString chatId) txt
+  liftIO $ sendMessage (stToken s) msgReq (stManager s)
 
-processUpd :: Update -> IO ()
-processUpd u = print $ getTextMessage $ message u
+processUpd :: Update -> Bot ()
+processUpd u = do
+  liftIO $ print u
+  let r = processMsg $ message u
+  liftIO $ print r
+  let uid = update_id u
+  modify (\s -> s { stOffset = Just $ uid+1})
+  liftIO $ print uid
+  when (isJust r) $ do
+      let Just (c,t) = r
+      r <- sendBotMessage (show c) t
+      return ()
+  return ()
+  where
+    processMsg (Just Message{text=Just m, chat=Chat{chat_id = cid}}) = Just (cid, m)
+    processMsg _ = Nothing
+
+processBotUpd :: Bot ()
+processBotUpd = do
+  r <- getBotUpd
+  case r of
+    Right (Response upds) -> do
+                  liftIO $ print $ length upds
+                  mapM_ processUpd upds
+    Left e -> liftIO $ print e
+  return ()
 
 main :: IO ()
 main = do
   botCfg <- createBotConfig
-  r <- evalStateT getBotUpd botCfg
-  case r of
-    Right (Response upds) -> mapM_ processUpd upds
-    Left e -> print e
-
-
+  evalStateT (forever processBotUpd) botCfg
+  print "done"
