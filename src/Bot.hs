@@ -1,8 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Bot
-    ( runBot
+    ( runBotInteractive
     ) where
 
 import Network.HTTP.Client(newManager,Manager)
@@ -12,18 +13,16 @@ import Servant.Common.Req(ServantError)
 import System.Environment(getEnv)
 import System.IO.Error(isDoesNotExistError)
 import Data.String(fromString, IsString)
-import Data.Either
 import Data.Maybe
-import Data.Char(isDigit)
 import Data.Text(Text)
-import Data.Text as T(all)
 import Data.Text.Read
-import Control.Monad(liftM)
 import Control.Monad.State
-import Control.Applicative
 import Control.Monad.Trans.Maybe
+import Control.Monad.Identity
 import qualified Control.Exception as E
 import System.Log.Logger
+import Control.Concurrent
+import Control.Concurrent.Async
 
 data BotConfig = BotConfig {
         stManager :: Manager
@@ -32,11 +31,17 @@ data BotConfig = BotConfig {
       , stLongPoolTimeout :: Maybe Int
     }
 
-newtype Bot a = Bot {
-          runB :: StateT BotConfig IO a
+newtype BotT m a = BotT {
+          runBT :: StateT BotConfig m a
         } deriving (Functor, Applicative, Monad,
-                    MonadIO,
+                    MonadTrans,
                     MonadState BotConfig)
+
+
+instance (MonadIO m ) => MonadIO (BotT m) where
+  liftIO = lift . liftIO
+
+type Bot a = BotT Identity a
 
 loggerName :: String
 loggerName = "App.Bot"
@@ -50,7 +55,7 @@ createBotConfig = do
   return BotConfig { stManager = manager
                    , stToken = token
                    , stOffset = Nothing
-                   , stLongPoolTimeout = Just 10 }
+                   , stLongPoolTimeout = Just 25 }
   where
     getTokenFromEnv = fmap (Token . fromString) $ getEnv "TELEGRAM_TOKEN" `E.catch` returnDefaultToken
     returnDefaultToken :: E.IOException -> IO String
@@ -59,55 +64,58 @@ createBotConfig = do
       | otherwise = E.throw e
     defaultToken = "bot326648651:AAFwwJ1hMj0T1zBYGyOz0uJOFvyXgibSKdc"
 
-sendBotMessage :: Show a => a -> Text -> Bot (Either ServantError MessageResponse)
-sendBotMessage chatId txt = do
-  s <- get
-  let textChatId = fromString $ show chatId
-  let msgReq = sendMessageRequest textChatId txt
-  liftIO $ sendMessage (stToken s) msgReq (stManager s)
-
-updateOffset :: Int -> Bot ()
+-- Updates last processed update id
+updateOffset :: (Monad m) => Int -> BotT m ()
 updateOffset n = modify $ modifyOffset $ Just . maxMaybe (n+1)
   where
     modifyOffset f s = s { stOffset = f (stOffset s) }
     maxMaybe a (Just b) = max a b
     maxMaybe a Nothing = a
 
-processUpdMsg :: Update -> MaybeT Bot (Int,Text)
-processUpdMsg u@Update { update_id=uid, message=msg } = do
-  liftIO $ debugM loggerName $ "Process update #" ++ show uid
-  lift $ updateOffset uid
-  let inMsg = msg >>= (\m -> (chat_id $ chat m, ) <$> text m)
-  guard (isJust inMsg)
-  return $ fromJust inMsg
-
-dummy n = show n ++ " " ++ (show $ length $ show $ product [1..n])
-
-getBotUpd :: Bot (Either ServantError UpdatesResponse)
-getBotUpd = do
-  liftIO $ debugM loggerName "Send longpool request..."
-  getBotUpd_
+eitherThrowLog :: (E.Exception e) => IO (Either e a) -> IO a
+eitherThrowLog m =  m >>= (\e -> logOnErr e >> return (either E.throw id e))
   where
-    getBotUpd_ = get >>=
-      liftIO . (\s ->
-        getUpdates (stToken s) (stOffset s) Nothing (stLongPoolTimeout s) (stManager s))
+    logOnErr :: (Show e) => Either e a -> IO ()
+    logOnErr (Left e) = errorM loggerName (show e)
+    logOnErr (Right _) = return ()
 
-type TextMessageHandler r = Int -> Text -> Bot r
+liftBotIO :: Bot (IO a) -> BotT IO a
+liftBotIO b = get >>= liftIO . evalState (runBT b)
 
-processBotUpds :: TextMessageHandler r -> Bot [r]
-processBotUpds h = do
-  r <- getBotUpd
-  case r of
-    Right (Response upds) -> do
-                  liftIO $ debugM loggerName $ "Get response. Updates: " ++ (show . length) upds
-                  catMaybes <$> mapM (runMaybeT . (processUpdMsg >=> (lift . uncurry h))) upds
-    Left e -> do
-      liftIO $ errorM loggerName $ show e
-      return []
+asyncBot :: Bot (IO a) -> BotT IO (Async a)
+asyncBot = liftBotIO . fmap async
 
-onTextMessage :: TextMessageHandler ()
-onTextMessage cid txt = do
-  r <- sendBotMessage cid txt
-  return ()
+-- send message to specified chat
+sendBotMessage :: Show a => a -> Text -> Bot (IO MessageResponse)
+sendBotMessage chatId txt = do
+  s <- get
+  let textChatId = fromString $ show chatId
+  let msgReq = sendMessageRequest textChatId txt
+  let r = sendMessage (stToken s) msgReq (stManager s)
+  return $ eitherThrowLog r
 
-runBot = createBotConfig >>= evalStateT (runB $ forever $ processBotUpds onTextMessage)
+-- get updates using long pooling
+getBotUpd :: Bot (IO UpdatesResponse)
+getBotUpd = do
+  s <- get
+  let r = getUpdates (stToken s) (stOffset s) Nothing (stLongPoolTimeout s) (stManager s)
+  return $ eitherThrowLog r
+
+runBotInteractive :: (Text -> IO Text) -> IO ()
+runBotInteractive textMap = do
+    cfg <- liftIO createBotConfig
+    evalStateT (runBT $ forever bot) cfg
+  where
+    bot :: BotT IO ()
+    bot = do
+            let unwrapMsgUpdate = fmap getMsgText . result
+            liftIO $ debugM loggerName "Send longpool request.."
+            upds <- unwrapMsgUpdate <$> liftBotIO getBotUpd
+            liftIO $ debugM loggerName $ "Updates recivied: "++ show (length upds)
+            mapM_ (updateOffset . fst) upds
+            let inMsg = mapMaybe snd upds
+            mapM_ (\(b,c) -> do
+                                t <- liftIO (textMap c)
+                                asyncBot $ sendBotMessage b t) inMsg
+    getMsgText :: Update -> (Int, Maybe (Int, Text))
+    getMsgText u = (update_id u, message u >>= (\m -> (chat_id $ chat m, ) <$> text m))

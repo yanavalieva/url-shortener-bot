@@ -2,12 +2,7 @@
 
 module Main where
 
--- import Control.Monad.State(evalStateT)
--- import Control.Monad(forever)
-
-import Lib
-import TinyUrl
-import Bot
+import Lib(runBotInteractive,messageHandler)
 
 main :: IO ()
-main = runBot
+main = runBotInteractive messageHandler

@@ -1,6 +1,7 @@
 module Lib
-    ( someFunc
+    ( messageHandler
+    , runBotInteractive
     ) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import MessageHandler(messageHandler)
+import Bot(runBotInteractive)
