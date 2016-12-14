@@ -13,7 +13,7 @@ getShortUrl url = do
     response <- httpLbs request manager
 
     let status = statusCode $ responseStatus response
-    print status
+    
     if status == 200
         then return $ Just $ responseBody response
         else return Nothing
