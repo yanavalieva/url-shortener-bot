@@ -1,0 +1,12 @@
+User
+    username String
+    default_service String
+    UniqueUser username
+    deriving Show
+
+History
+	user_id UserId Eq
+    service String
+    src_url String
+    short_url String
+    deriving Show
