@@ -1,4 +1,0 @@
-User
-    name String
-    age Int
-    deriving Show
