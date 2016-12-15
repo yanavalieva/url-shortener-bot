@@ -1,7 +1,7 @@
 User
-    username String
+    telegram_id Int64
     default_service String
-    UniqueUser username
+    UniqueUser telegram_id
     deriving Show
 
 History
