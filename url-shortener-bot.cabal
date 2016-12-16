@@ -11,7 +11,7 @@ copyright:           2016 Cherkasov V., Danilin D., Valieva Y.
 category:            Web
 build-type:          Simple
 extra-source-files:  README.md
-cabal-version:       >=1.8
+cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
@@ -43,6 +43,7 @@ library
                        , classy-prelude >= 0.10.2 
                        , classy-prelude-conduit >= 0.10.2 
                        , classy-prelude-yesod >= 0.10.2
+                       , monad-logger
 
   default-language:    Haskell2010
 
