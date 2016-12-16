@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 
-module Bitly (getShortUrl) where
+module Bitly (bitly) where
 
 import Network.HTTP.Client
 import Network.HTTP.Base (urlEncode)
@@ -9,11 +9,11 @@ import Network.HTTP.Types.Status (statusCode)
 import Data.ByteString.Lazy.Internal
 import Data.Aeson
 import Data.Text.Internal.Lazy (Text)
+import Data.Text.Lazy (unpack)
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Lazy as B
 import GHC.Generics
-import Data.Text.Lazy.Encoding (encodeUtf8)
 
 data Data =
     Data { long_url :: !Text
@@ -49,8 +49,8 @@ instance ToJSON ResponseBody where
 authToken :: String
 authToken = "debe319f92b9d2d1109a9958a18985fede11b4ff"
 
-getShortUrl :: [Char] -> IO (Maybe ByteString)
-getShortUrl longUrl = do
+bitly :: [Char] -> IO (Either String String)
+bitly longUrl = do
     manager <- newManager tlsManagerSettings
 
     let encodedUrl = urlEncode longUrl
@@ -63,11 +63,11 @@ getShortUrl longUrl = do
     response <- httpLbs request manager
 
     let status = statusCode $ responseStatus response
-    
-    if status == 200
-        then do
-            let eitherBody = (eitherDecode $ responseBody response) :: Either String ResponseBody
-            case eitherBody of
-                Left _ -> return Nothing
-                Right body -> return $ Just $ encodeUtf8 $ url $ _data body
-        else return Nothing
+    let eitherBody = (eitherDecode $ responseBody response) :: Either String ResponseBody
+
+    case eitherBody of
+        Left er -> return $ Left er
+        Right body -> return
+                      $ if status == 200
+                            then Right $ unpack $ url $ _data body
+                            else Left $ unpack $ status_txt body

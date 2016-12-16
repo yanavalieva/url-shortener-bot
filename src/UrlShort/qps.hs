@@ -1,19 +1,24 @@
-module Qps (getShortUrl) where
+module Qps (qps) where
 
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS   (tlsManagerSettings)
 import Network.HTTP.Types.Status (statusCode)
 import Data.ByteString.Lazy.Internal
+import Data.ByteString.Lazy.Char8 (unpack)
 
-getShortUrl :: [Char] -> IO (Maybe ByteString)
-getShortUrl url = do
+qps :: [Char] -> IO (Either String String)
+qps url = do
     manager <- newManager tlsManagerSettings
 
     request <- parseRequest $ "http://qps.ru/api?url=" ++ url
     response <- httpLbs request manager
 
     let status = statusCode $ responseStatus response
-    
+
     if status == 200
-        then return $ Just $ responseBody response
-        else return Nothing
+        then return $ Right $ unpack $ responseBody response
+        else return $ Left "Unknown error"
+
+    return $ if status == 200
+                then Right $ unpack $ responseBody response
+                else Left "Unknown error"

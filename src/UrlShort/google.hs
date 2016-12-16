@@ -1,18 +1,33 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 
-module Google (getShortUrl) where
+module Google (google) where
 
-import           Data.Aeson                 (encode, object, (.=))
+import           Data.Aeson
 import           Data.ByteString.Lazy.Internal
 import           Network.HTTP.Client
 import           Network.HTTP.Client.TLS
 import           Network.HTTP.Types.Status  (statusCode)
+import           Control.Applicative
+import           Control.Monad
+import           qualified Data.ByteString.Lazy as B
+import           GHC.Generics
+import           Data.Text.Internal.Lazy (Text)
+import           Data.Text.Lazy (unpack)
+
+data ResponseBody =
+    ResponseBody { kind :: !Text
+                 , id :: !Text
+                 , longUrl :: !Text
+                 } deriving (Show, Generic)
+
+instance FromJSON ResponseBody
+instance ToJSON ResponseBody
 
 authKey :: String
 authKey = "AIzaSyD0ZGwJBT3dO_VWR9QqbJjS9CJJ4GX1zOc"
 
-getShortUrl :: [Char] -> IO ByteString
-getShortUrl longUrl = do
+google :: [Char] -> IO (Either String String)
+google longUrl = do
     manager <- newManager tlsManagerSettings
 
     let requestObject = object [ "longUrl" .= (longUrl :: String)]
@@ -28,4 +43,12 @@ getShortUrl longUrl = do
             }
 
     response <- httpLbs request manager
-    return $ responseBody response
+    let status = statusCode $ responseStatus response
+    let eitherBody = (eitherDecode $ responseBody response) :: Either String ResponseBody
+
+    case eitherBody of
+        Left er -> return $ Left er
+        Right body -> return
+                        $ if status == 200
+                            then Right $ unpack $ Google.id body
+                            else Left "Unknown error"
