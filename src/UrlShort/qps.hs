@@ -7,6 +7,7 @@ import Data.ByteString.Lazy.Internal
 import Data.ByteString.Lazy.Char8 (unpack)
 
 qps :: [Char] -> IO (Either String String)
+qps [] = return $ Left "Invalid Link"
 qps url = do
     manager <- newManager tlsManagerSettings
 
@@ -14,10 +15,6 @@ qps url = do
     response <- httpLbs request manager
 
     let status = statusCode $ responseStatus response
-
-    if status == 200
-        then return $ Right $ unpack $ responseBody response
-        else return $ Left "Unknown error"
 
     return $ if status == 200
                 then Right $ unpack $ responseBody response
