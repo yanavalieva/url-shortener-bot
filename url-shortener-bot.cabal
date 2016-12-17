@@ -19,8 +19,8 @@ library
                        MessageHandler
                        TinyUrl
                        Bot
-                       Scheme
-                       TestDB
+                       DataBase.Scheme
+                       DataBase.Requests
 
   build-depends:       base >= 4.7 && < 5
                        , telegram-api

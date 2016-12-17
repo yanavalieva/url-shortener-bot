@@ -7,7 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Scheme where 
+module DataBase.Scheme where 
 
 
 import Database.Persist.Quasi
@@ -16,4 +16,4 @@ import qualified Database.Persist.TH (mkMigrate, mkPersist, persistLowerCase,
                                     share, sqlSettings)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] 
-	$(persistFileWith lowerCaseSettings "scheme")
+	$(persistFileWith lowerCaseSettings "src/DataBase/scheme")
