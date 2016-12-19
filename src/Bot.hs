@@ -82,24 +82,27 @@ eitherThrowLog m =  m >>= (\e -> logOnErr e >> return (either E.throw id e))
 liftBotIO :: Bot (IO a) -> BotT IO a
 liftBotIO b = get >>= liftIO . evalState (runBT b)
 
-asyncBot :: Bot (IO a) -> BotT IO (Async a)
-asyncBot = liftBotIO . fmap async
+unliftBotIO :: BotT IO a -> Bot (IO a)
+unliftBotIO b = fmap (evalStateT $ runBT b) get
+
+asyncBot :: BotT IO a -> BotT IO (Async a)
+asyncBot = liftBotIO . fmap async . unliftBotIO
 
 -- send message to specified chat
-sendBotMessage :: Show a => a -> Text -> Bot (IO MessageResponse)
+sendBotMessage :: Show a => a -> Text -> BotT IO MessageResponse
 sendBotMessage chatId txt = do
   s <- get
   let textChatId = fromString $ show chatId
   let msgReq = sendMessageRequest textChatId txt
   let r = sendMessage (stToken s) msgReq (stManager s)
-  return $ eitherThrowLog r
+  liftIO $ eitherThrowLog r
 
 -- get updates using long pooling
-getBotUpd :: Bot (IO UpdatesResponse)
+getBotUpd :: BotT IO UpdatesResponse
 getBotUpd = do
   s <- get
   let r = getUpdates (stToken s) (stOffset s) Nothing (stLongPoolTimeout s) (stManager s)
-  return $ eitherThrowLog r
+  liftIO $ eitherThrowLog r
 
 runBotInteractive :: (Text -> IO Text) -> IO ()
 runBotInteractive textMap = do
@@ -110,12 +113,12 @@ runBotInteractive textMap = do
     bot = do
             let unwrapMsgUpdate = fmap getMsgText . result
             liftIO $ debugM loggerName "Send longpool request.."
-            upds <- unwrapMsgUpdate <$> liftBotIO getBotUpd
+            upds <- unwrapMsgUpdate <$> getBotUpd
             liftIO $ debugM loggerName $ "Updates recivied: "++ show (length upds)
             mapM_ (updateOffset . fst) upds
             let inMsg = mapMaybe snd upds
-            mapM_ (\(b,c) -> do
-                                t <- liftIO (textMap c)
-                                asyncBot $ sendBotMessage b t) inMsg
+            -- let processMsg (cid,txt) = asyncBot $ liftIO (textMap txt) >>= sendBotMessage cid
+            let processMsg = uncurry $ (asyncBot.) . (liftIO . textMap >=>) . sendBotMessage
+            mapM_ processMsg inMsg
     getMsgText :: Update -> (Int, Maybe (Int, Text))
     getMsgText u = (update_id u, message u >>= (\m -> (chat_id $ chat m, ) <$> text m))
