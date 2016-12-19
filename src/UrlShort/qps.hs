@@ -4,10 +4,11 @@ import Network.HTTP.Client
 import Network.HTTP.Client.TLS   (tlsManagerSettings)
 import Network.HTTP.Types.Status (statusCode)
 import Data.ByteString.Lazy.Internal
-import Data.ByteString.Lazy.Char8 (unpack)
+import Data.Text.Lazy (Text, pack)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 
-qps :: [Char] -> IO (Either String String)
-qps [] = return $ Left "Invalid Link"
+qps :: [Char] -> IO (Either Text Text)
+qps [] = return $ Left $ pack "Invalid Link"
 qps url = do
     manager <- newManager tlsManagerSettings
 
@@ -17,5 +18,5 @@ qps url = do
     let status = statusCode $ responseStatus response
 
     return $ if status == 200
-                then Right $ unpack $ responseBody response
-                else Left "Unknown error"
+                then Right $ decodeUtf8 $ responseBody response
+                else Left $ pack "Unknown error"

@@ -11,8 +11,8 @@ import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Lazy as B
 import GHC.Generics
-import Data.Text.Internal.Lazy (Text)
-import Data.Text.Lazy (unpack)
+import Data.Text.Lazy (Text, pack)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 
 data ResponseBody =
     ResponseBody { kind :: !Text
@@ -26,7 +26,7 @@ instance ToJSON ResponseBody
 authKey :: String
 authKey = "AIzaSyD0ZGwJBT3dO_VWR9QqbJjS9CJJ4GX1zOc"
 
-google :: [Char] -> IO (Either String String)
+google :: [Char] -> IO (Either Text Text)
 google longUrl = do
     manager <- newManager tlsManagerSettings
 
@@ -47,8 +47,8 @@ google longUrl = do
     let eitherBody = (eitherDecode $ responseBody response) :: Either String ResponseBody
 
     case eitherBody of
-        Left er -> return $ Left er
+        Left er -> return $ Left $ pack er
         Right body -> return
                         $ if status == 200
-                            then Right $ unpack $ UrlShort.Google.id body
-                            else Left "Unknown error"
+                            then Right $ UrlShort.Google.id body
+                            else Left $ pack "Unknown error"
