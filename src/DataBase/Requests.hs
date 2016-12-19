@@ -20,6 +20,7 @@ import Control.Monad.Reader.Class
 import System.Environment
 import Control.Monad.IO.Class
 import Data.Int 
+import Data.Text hiding (map)
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader
 import GHC.Generics (Generic) 
@@ -47,26 +48,30 @@ runDb query = do
 runRequest :: MonadIO m => SqlPersistT IO a -> Config -> m a
 runRequest req cfg = runReaderT (runDb req) cfg
 
+-- запрос создания пользователя
 createUser :: MonadIO m => Int64 -> Service -> ReaderT SqlBackend m Int64
 createUser id def_serv = do
     newUser <- insert $ User id def_serv
     return $ fromSqlKey newUser
 
-insertIntoHistory :: MonadIO m => Int64 -> Service -> String -> String -> ReaderT SqlBackend m Int64
+-- запрос добавления записи в историю
+insertIntoHistory :: MonadIO m => Int64 -> Service -> Text -> Text -> ReaderT SqlBackend m Int64
 insertIntoHistory id serv src short = do
     newHist <- insert $ History id serv src short
     return $ fromSqlKey newHist
 
+-- создание нового пользователя или поиск сервиса по умолчанию уже существующего пользователя
 createOrFindUser :: MonadIO m => Int64 -> Config -> m Service
 createOrFindUser id cfg = do
-    usr <- runRequest (getBy $ UniqueUser 1) cfg
+    usr <- runRequest (getBy $ UniqueUser id) cfg
     case usr of
         Nothing -> do
             runRequest (createUser id Google) cfg
             return Google
         Just (Entity _ (User _ service)) -> return service
 
-findInHistory :: MonadIO m => Int64 -> Service -> String -> Config -> m [String]
+-- поиск по истории
+findInHistory :: MonadIO m => Int64 -> Service -> Text -> Config -> m [Text]
 findInHistory id serv src cfg = 
     runRequest (selectList [
         HistoryUserId ==. id, 
@@ -74,6 +79,7 @@ findInHistory id serv src cfg =
         HistorySrcUrl ==. src
         ] []) cfg >>= return . map (\(Entity _ (History _ _ _ short)) -> short)
 
+-- установка нового сервиса по умолчанию
 setNewDefault :: MonadIO m => Int64 -> Service -> Config -> m ()
 setNewDefault id serv cfg =  
     runRequest (updateWhere 
@@ -81,8 +87,14 @@ setNewDefault id serv cfg =
         [UserDefaultService =. serv]
     ) cfg
 
-main = do
+-- добавление записи в историю
+createHistoryRecord :: MonadIO m =>
+     Int64 -> Service -> Text -> Text -> Config -> m Int64
+createHistoryRecord id serv src short = 
+    runRequest (insertIntoHistory id serv src short)
+
+{- main = do
     pool <- createPool
     let cfg = Config { connections = pool }
     runSqlPool runMigrations pool
-    createOrFindUser 1 cfg
+    findInHistory 1 Bitly "src.com" cfg -}
