@@ -9,7 +9,7 @@ import Network.HTTP.Types.Status (statusCode)
 import Data.ByteString.Lazy.Internal
 import Data.Aeson
 import Data.Text.Lazy (Text)
-import Data.Text.Lazy (pack)
+import Data.Text.Lazy (pack, unpack)
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Lazy as B
@@ -50,11 +50,11 @@ instance ToJSON ResponseBody where
 authToken :: String
 authToken = "debe319f92b9d2d1109a9958a18985fede11b4ff"
 
-bitly :: [Char] -> IO (Either Text Text)
+bitly :: Text -> IO (Either Text Text)
 bitly longUrl = do
     manager <- newManager tlsManagerSettings
 
-    let encodedUrl = urlEncodeVars [("access_token", authToken), ("longUrl", longUrl)]
+    let encodedUrl = urlEncodeVars [("access_token", authToken), ("longUrl", unpack longUrl)]
     request <- parseRequest 
                 $ "https://api-ssl.bitly.com/v3/shorten?" ++ encodedUrl
 

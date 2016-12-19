@@ -11,7 +11,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Lazy as B
 import GHC.Generics
-import Data.Text.Lazy (Text, pack)
+import Data.Text.Lazy (Text, pack, unpack)
 import Data.Text.Lazy.Encoding (decodeUtf8)
 
 data ResponseBody =
@@ -26,11 +26,12 @@ instance ToJSON ResponseBody
 authKey :: String
 authKey = "AIzaSyD0ZGwJBT3dO_VWR9QqbJjS9CJJ4GX1zOc"
 
-google :: [Char] -> IO (Either Text Text)
+google :: Text -> IO (Either Text Text)
 google longUrl = do
     manager <- newManager tlsManagerSettings
 
-    let requestObject = object [ "longUrl" .= (longUrl :: String)]
+    let url = unpack longUrl
+    let requestObject = object [ "longUrl" .= (url :: String)]
 
     initialRequest <- parseRequest $ "https://www.googleapis.com/urlshortener/v1/url?key=" ++ authKey
 

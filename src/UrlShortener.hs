@@ -7,7 +7,7 @@ import Service
 import Data.Text.Lazy (Text)
 
 --Сократитель ссылок
-shortUrl :: Service -> String -> IO (Either Text Text)
+shortUrl :: Service -> Text -> IO (Either Text Text)
 shortUrl service longUrl = case service of
                             Google -> google longUrl
                             Bitly  -> bitly  longUrl
