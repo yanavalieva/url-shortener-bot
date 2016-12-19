@@ -3,49 +3,56 @@
 
 module MessageHandler
     ( messageHandler
+    , parseCommand
     , UserCommand
     ) where
 
 import Data.Text(Text)
-import Data.Text as T(words)
+import qualified Data.Text as T
 import Data.Text.Read(decimal)
-import Data.String(fromString)
 import Data.Either(isRight)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, listToMaybe)
 import Data.String(fromString)
 import Control.Applicative((<|>))
 import Control.Monad
 
+import Service
 data UserCommand = Help |
-                   ShortUrl Text |
+                   ShortUrl Service Text |
                    GenPrime Int |
                    Unknown Text
-
+                deriving(Show)
 
 messageHandler :: Text -> IO Text
-messageHandler "0" = return $ fromString $ replicate 100000 'A'
-messageHandler  t = processCommand $ parseCommand t
+messageHandler = processCommand . parseCommand
 
-
-factors n = [x | x <- [1..n], n `mod` x == 0]
-isPrime n = factors n == [1, n]
-genPrime n = (1:filter isPrime [2..]) !! n
+genPrime = (!!) (1:filter isPrime [2..])
+  where
+    factors n = [x | x <- [1..n], n `mod` x == 0]
+    isPrime n = factors n == [1, n]
 
 parseCommand :: Text -> UserCommand
 parseCommand t = let (cmd:args) = T.words t
-                  in orUnknown (lookup cmd cmds <*> Just args)
+                 in orUnknown $ join (lookup cmd cmds <*> Just args)
   where
     orUnknown = fromMaybe $ Unknown t
-    cmds :: [(Text, [Text] -> UserCommand)]
-    cmds = [("/p", orUnknown . parseGenPrime)]
-    parseGenPrime a = do
-                        guard (length a == 1)
-                        let p = decimal $ head a
-                        guard (isRight p)
-                        let Right (n,_) = p
-                        return $ GenPrime n
+    cmds :: [(Text, [Text] -> Maybe UserCommand)]
+    cmds = [ ("/p",      parseGenPrimeCmd)
+           , ("/bitly",  parseShortCmd Bitly)
+           , ("/google", parseShortCmd Google)
+           , ("/qps",    parseShortCmd Qps)
+           , ("/help",   const (Just Help))
+           ]
+    parseGenPrimeCmd a = GenPrime <$> (decimal <$> listToMaybe a >>= fmap fst . eitherToMaybe)
+    parseShortCmd s a = ShortUrl s <$> listToMaybe a
+
+eitherToMaybe :: Either e a -> Maybe a
+eitherToMaybe (Left _) = Nothing
+eitherToMaybe (Right a) = Just a
 
 processCommand :: UserCommand -> IO Text
+processCommand (ShortUrl s u) = return u
+processCommand (Unknown t) = return $ T.concat ["Wrong cmd: `", t, "`"]
+processCommand Help = return "How I can help u?"
 processCommand (GenPrime n) = return $ fromString $
-                                concat ["The ", show n, "th prime number is ", show (genPrime n)]
-processCommand _ = return $ ":-)"
+                                concat ["The ", show n, "th prime number is ", show $ genPrime n]
