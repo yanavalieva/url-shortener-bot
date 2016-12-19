@@ -7,6 +7,6 @@ User
 History
 	userId Int64
     service Service
-    srcUrl String
-    shortUrl String
+    srcUrl Text
+    shortUrl Text
     deriving Show

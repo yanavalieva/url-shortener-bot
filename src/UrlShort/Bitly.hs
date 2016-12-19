@@ -3,18 +3,16 @@
 module UrlShort.Bitly (bitly) where
 
 import Network.HTTP.Client
-import Network.HTTP.Base (urlEncodeVars)
 import Network.HTTP.Client.TLS   (tlsManagerSettings)
+import Network.HTTP.Types.URI
 import Network.HTTP.Types.Status (statusCode)
-import Data.ByteString.Lazy.Internal
 import Data.Aeson
-import Data.Text.Lazy (Text)
-import Data.Text.Lazy (pack, unpack)
+import Data.Text.Lazy (Text,pack, unpack)
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Lazy as B
 import GHC.Generics
-import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.Text.Lazy.Encoding (decodeUtf8,encodeUtf8)
 
 data Data =
     Data { long_url :: !Text
@@ -47,17 +45,14 @@ instance ToJSON ResponseBody where
            , "data"         .= _data
              ]
 
-authToken :: String
 authToken = "debe319f92b9d2d1109a9958a18985fede11b4ff"
 
 bitly :: Text -> IO (Either Text Text)
 bitly longUrl = do
     manager <- newManager tlsManagerSettings
-
-    let encodedUrl = urlEncodeVars [("access_token", authToken), ("longUrl", unpack longUrl)]
-    request <- parseRequest 
-                $ "https://api-ssl.bitly.com/v3/shorten?" ++ encodedUrl
-
+    let query = [("access_token", Just authToken), ("longUrl", Just $ B.toStrict $ encodeUtf8 longUrl)]
+    r <- parseRequest "https://api-ssl.bitly.com/v3/shorten"
+    let request = setQueryString query r
     response <- httpLbs request manager
 
     let status = statusCode $ responseStatus response
