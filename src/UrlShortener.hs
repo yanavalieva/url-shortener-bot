@@ -1,11 +1,9 @@
 module UrlShortener where
 
-import Google
-import Bitly
-import Qps
-
---Тип сервиса
-data Service = Google | Bitly | Qps
+import UrlShort.Google
+import UrlShort.Bitly
+import UrlShort.Qps
+import Service
 
 --Сократитель ссылок
 shortUrl :: Service -> String -> IO (Either String String)

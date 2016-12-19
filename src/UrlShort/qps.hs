@@ -1,4 +1,4 @@
-module Qps (qps) where
+module UrlShort.Qps (qps) where
 
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS   (tlsManagerSettings)

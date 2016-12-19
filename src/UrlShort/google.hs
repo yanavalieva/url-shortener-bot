@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 
-module Google (google) where
+module UrlShort.Google (google) where
 
 import Data.Aeson
 import Data.ByteString.Lazy.Internal
@@ -50,5 +50,5 @@ google longUrl = do
         Left er -> return $ Left er
         Right body -> return
                         $ if status == 200
-                            then Right $ unpack $ Google.id body
+                            then Right $ unpack $ UrlShort.Google.id body
                             else Left "Unknown error"

@@ -22,6 +22,11 @@ library
                        DataBase.Scheme
                        DataBase.Requests
                        Service
+                       UrlShort.Bitly
+                       UrlShort.Google
+                       UrlShort.Qps
+                       UrlShortener
+
 
   build-depends:       base >= 4.7 && < 5
                        , telegram-api
@@ -45,6 +50,8 @@ library
                        , classy-prelude-conduit >= 0.10.2 
                        , classy-prelude-yesod >= 0.10.2
                        , monad-logger
+                       , aeson
+                       , HTTP
 
   default-language:    Haskell2010
 

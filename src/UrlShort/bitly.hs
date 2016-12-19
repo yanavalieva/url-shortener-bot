@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 
-module Bitly (bitly) where
+module UrlShort.Bitly (bitly) where
 
 import Network.HTTP.Client
-import Network.HTTP.Base (urlEncode)
+import Network.HTTP.Base (urlEncodeVars)
 import Network.HTTP.Client.TLS   (tlsManagerSettings)
 import Network.HTTP.Types.Status (statusCode)
 import Data.ByteString.Lazy.Internal
@@ -53,12 +53,9 @@ bitly :: [Char] -> IO (Either String String)
 bitly longUrl = do
     manager <- newManager tlsManagerSettings
 
-    let encodedUrl = urlEncode longUrl
+    let encodedUrl = urlEncodeVars [("access_token", authToken), ("longUrl", longUrl)]--urlEncode longUrl
     request <- parseRequest 
-                $ "https://api-ssl.bitly.com/v3/shorten?access_token=" 
-                    ++ authToken 
-                    ++ "&longUrl=" 
-                    ++ encodedUrl
+                $ "https://api-ssl.bitly.com/v3/shorten?" ++ encodedUrl
 
     response <- httpLbs request manager
 
