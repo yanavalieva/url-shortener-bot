@@ -21,6 +21,7 @@ library
                        Bot
                        DataBase.Scheme
                        DataBase.Requests
+                       Service
 
   build-depends:       base >= 4.7 && < 5
                        , telegram-api

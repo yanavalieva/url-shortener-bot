@@ -1,12 +1,12 @@
 User
-    telegram_id Int64
-    default_service String
-    UniqueUser telegram_id
+    telegramId Int64
+    defaultService Service
+    UniqueUser telegramId
     deriving Show
 
 History
-	user_id UserId Eq
-    service String
-    src_url String
-    short_url String
+	userId Int64
+    service Service
+    srcUrl String
+    shortUrl String
     deriving Show
