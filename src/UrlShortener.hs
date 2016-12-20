@@ -4,7 +4,7 @@ import UrlShort.Google
 import UrlShort.Bitly
 import UrlShort.Qps
 import Service
-import Data.Text.Lazy (Text)
+import Data.Text (Text, pack)
 
 --Сократитель ссылок
 shortUrl :: Service -> Text -> IO (Either Text Text)

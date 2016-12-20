@@ -3,16 +3,16 @@
 module UrlShort.Google (google) where
 
 import Data.Aeson
-import Data.ByteString.Lazy.Internal
+import Data.ByteString.Internal
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
 import Network.HTTP.Types.Status  (statusCode)
 import Control.Applicative
 import Control.Monad
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString as B
 import GHC.Generics
-import Data.Text.Lazy (Text, pack, unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.Text (Text, pack, unpack)
+import Data.Text.Encoding (decodeUtf8)
 
 data ResponseBody =
     ResponseBody { kind :: !Text
