@@ -26,6 +26,7 @@ library
                        UrlShort.Google
                        UrlShort.Qps
                        UrlShortener
+                       Utilits
 
 
   build-depends:       base >= 4.7 && < 5
