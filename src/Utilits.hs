@@ -10,7 +10,7 @@ import Data.Text hiding (map, head, null)
 import Data.List
 
 -- если запрос уже выполнялся, ищет его в истории, иначе генерирует новый url
-{- getShortUrl :: MonadIO m => Int64 -> Service -> Text -> Config -> m Text
+getShortUrl :: Int64 -> Service -> Text -> Config -> IO Text
 getShortUrl id service url cfg = do
     hist <- findInHistory id service url cfg
     if (null hist) then 
@@ -18,16 +18,18 @@ getShortUrl id service url cfg = do
     else do
         short <- shortUrl service url
         case short of 
-        Right sh -> do
-        	createHistoryRecord id service url sh cfg
-        	eturn sh
-		Left e -> return e -}
+            Right sh ->
+                createHistoryRecord id service url sh cfg >>
+                return sh
+            Left err -> return err
 
 -- запрос с использованием сервиса по умолчанию
-{- getByDefault id url cfg = do
-	serv <- createOrFindUser id cfg
-	return $ getShortUrl id serv url cfg -}
+getByDefault :: Int64 -> Text -> Config -> IO Text
+getByDefault id url cfg = do
+    serv <- createOrFindUser id cfg
+    url <- getShortUrl id serv url cfg
+    return url
 
 -- установка сервиса по умолчанию
-setDefaultService :: MonadIO m => Int64 -> Service -> Config -> m ()
+setDefaultService :: Int64 -> Service -> Config -> IO ()
 setDefaultService = setNewDefaultService
