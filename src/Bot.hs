@@ -24,11 +24,14 @@ import System.Log.Logger
 import Control.Concurrent
 import Control.Concurrent.Async
 
+import DataBase.Requests(Config,initializeDB)
+
 data BotConfig = BotConfig {
         stManager :: Manager
       , stToken :: Token
       , stOffset  :: Maybe Int
       , stLongPoolTimeout :: Maybe Int
+      , dbConfig :: Config
     }
 
 newtype BotT m a = BotT {
@@ -52,10 +55,13 @@ createBotConfig = do
   token <- getTokenFromEnv
   debugM loggerName $ "Using token" ++ show token
   manager <- newManager tlsManagerSettings
+  c <- initializeDB
   return BotConfig { stManager = manager
                    , stToken = token
                    , stOffset = Nothing
-                   , stLongPoolTimeout = Just 25 }
+                   , stLongPoolTimeout = Just 25
+                   , dbConfig = c
+                   }
   where
     getTokenFromEnv = fmap (Token . fromString) $ getEnv "TELEGRAM_TOKEN" `E.catch` returnDefaultToken
     returnDefaultToken :: E.IOException -> IO String
@@ -104,8 +110,8 @@ getBotUpd = do
   let r = getUpdates (stToken s) (stOffset s) Nothing (stLongPoolTimeout s) (stManager s)
   liftIO $ eitherThrowLog r
 
-runBotInteractive :: (Text -> IO Text) -> IO ()
-runBotInteractive textMap = do
+runBotInteractive :: (Int -> Config -> Text -> IO Text) -> IO ()
+runBotInteractive mHandler = do
     cfg <- liftIO createBotConfig
     evalStateT (runBT $ forever bot) cfg
   where
@@ -117,8 +123,10 @@ runBotInteractive textMap = do
             liftIO $ debugM loggerName $ "Updates recivied: "++ show (length upds)
             mapM_ (updateOffset . fst) upds
             let inMsg = mapMaybe snd upds
-            -- let processMsg (cid,txt) = asyncBot $ liftIO (textMap txt) >>= sendBotMessage cid
-            let processMsg = uncurry $ (asyncBot.) . (liftIO . textMap >=>) . sendBotMessage
+            dbc <- dbConfig <$> get
+            let processMsg (uid, cid, txt) = asyncBot $ liftIO (mHandler uid dbc txt) >>= sendBotMessage cid
+            -- let processMsg = uncurry $ (asyncBot.) . (liftIO . (mHandler dbc) >=>) . sendBotMessage
             mapM_ processMsg inMsg
-    getMsgText :: Update -> (Int, Maybe (Int, Text))
-    getMsgText u = (update_id u, message u >>= (\m -> (chat_id $ chat m, ) <$> text m))
+    --                       update id, maybe (user_id, char_id, message_text)
+    getMsgText :: Update -> (Int, Maybe (Int, Int, Text))
+    getMsgText u = (update_id u, message u >>= (\m -> (chat_id $ chat m, ,) <$> (user_id <$> from m) <*> text m))

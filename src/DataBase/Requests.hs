@@ -9,29 +9,29 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-} 
-{-# LANGUAGE FlexibleInstances #-} 
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 
-module DataBase.Requests where 
+module DataBase.Requests where
 
 import Database.Persist
 import Database.Persist.Sqlite
 import Control.Monad.Reader.Class
 import System.Environment
 import Control.Monad.IO.Class
-import Data.Int 
+import Data.Int
 import Data.Text hiding (map)
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader
-import GHC.Generics (Generic) 
+import GHC.Generics (Generic)
 import DataBase.Scheme
 import Service
 
 data Config = Config { connections :: ConnectionPool }
 
-newtype App a = App { 
-    runApp :: ReaderT Config IO a 
-    } deriving (Functor, Applicative, Monad, 
+newtype App a = App {
+    runApp :: ReaderT Config IO a
+    } deriving (Functor, Applicative, Monad,
                 MonadIO, MonadReader Config )
 
 createPool :: IO ConnectionPool
@@ -62,10 +62,10 @@ insertIntoHistory id serv src short = do
 
 -- установка нового сервиса по умолчанию
 setNewDefault :: MonadIO m => Int64 -> Service -> Config -> m ()
-setNewDefault id serv cfg =  
-    runRequest (updateWhere 
-        [UserTelegramId ==. id] 
-        [UserDefaultService =. serv]) 
+setNewDefault id serv cfg =
+    runRequest (updateWhere
+        [UserTelegramId ==. id]
+        [UserDefaultService =. serv])
     cfg
 
 -- поиск пользователя по id
@@ -84,9 +84,9 @@ createOrFindUser id cfg = do
 
 -- поиск по истории
 findInHistory :: MonadIO m => Int64 -> Service -> Text -> Config -> m [Text]
-findInHistory id serv src cfg = 
+findInHistory id serv src cfg =
     runRequest (selectList [
-        HistoryUserId ==. id, 
+        HistoryUserId ==. id,
         HistoryService ==. serv,
         HistorySrcUrl ==. src
         ] []) cfg >>= return . map (\(Entity _ (History _ _ _ short)) -> short)
@@ -102,5 +102,11 @@ setNewDefaultService id service cfg = do
 -- добавление записи в историю
 createHistoryRecord :: MonadIO m =>
      Int64 -> Service -> Text -> Text -> Config -> m Int64
-createHistoryRecord id serv src short = 
+createHistoryRecord id serv src short =
     runRequest (insertIntoHistory id serv src short)
+
+
+initializeDB = do
+        pool <- createPool
+        runSqlPool runMigrations pool
+        return Config { connections = pool }
