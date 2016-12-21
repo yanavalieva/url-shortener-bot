@@ -73,11 +73,13 @@ isUrl :: Text -> Bool
 isUrl t = T.all (/= ' ') t && T.any (=='.') t
 
 processCommand :: Int -> Config -> UserCommand -> IO Text
-processCommand uid dbc (SetDefault s) = undefined setDefaultService uid s dbc >> return "done!"
-processCommand uid dbc (ShortUrl s u) = undefined getShortUrl uid s u dbc
-processCommand uid dbc (ShortUrlDef t) = undefined getByDefault uid t dbc
+processCommand uid dbc (SetDefault s) = setDefaultService uid s dbc >> return "done!"
+processCommand uid dbc (ShortUrl s u) = getShortUrl uid s u dbc
+processCommand uid dbc (ShortUrlDef t) = getByDefault uid t dbc
 processCommand uid dbc (Unknown t) = return $ T.concat ["Wrong cmd: `", t, "`"]
-processCommand uid dbc Help = return "How I can help u?"
+processCommand uid dbc Help = return $ T.pack $ "Hello, I'm url-shortener bot.\n"
+    ++ "I can work with such services: google, bilty, qps.\n"
+    ++ "To get short url you should enter command of service and your link."
 processCommand uid dbc Start = return "Hello!"
 processCommand uid dbc WrongUrl = return "Wrong Url!"
 processCommand uid dbc (GenPrime n) = return $ fromString $

@@ -17,4 +17,4 @@ import qualified Database.Persist.TH (mkMigrate, mkPersist, persistLowerCase,
 import Service
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] 
-	$(persistFileWith lowerCaseSettings "src/DataBase/scheme")
+    $(persistFileWith lowerCaseSettings "src/DataBase/scheme")
