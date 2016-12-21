@@ -23,6 +23,7 @@ import DataBase.Requests(Config)
 import Service
 data UserCommand = Start |
                    Help |
+                   WrongUrl |
                    ShortUrl Service Text |
                    ShortUrlDef Text |
                    GenPrime Int |
@@ -55,7 +56,10 @@ parseCommand t = let (cmd:args) = T.words t
            , ("/start",  const (Just Start))
            ]
     parseGenPrimeCmd a = GenPrime <$> (decimal <$> listToMaybe a >>= fmap fst . eitherToMaybe)
-    parseShortCmd s a = ShortUrl s <$> listToMaybe a
+    parseShortCmd s a = (ShortUrl s <$> do
+                              t <- listToMaybe a
+                              guard (isUrl t)
+                              return t) <|> (Just WrongUrl)
     parseSetDefault [T.toLower->"bitly"] = Just $ SetDefault Bitly
     parseSetDefault [T.toLower->"google"] = Just $ SetDefault Google
     parseSetDefault [T.toLower->"qps"] = Just $ SetDefault Qps
@@ -77,5 +81,6 @@ processCommand (fi->uid) dbc (ShortUrlDef t) = getByDefault uid t dbc
 processCommand (fi->uid) dbc (Unknown t) = return $ T.concat ["Wrong cmd: `", t, "`"]
 processCommand uid dbc Help = return "How I can help u?"
 processCommand uid dbc Start = return "Hello!"
+processCommand uid dbc WrongUrl = return "Wrong Url!"
 processCommand uid dbc (GenPrime n) = return $ fromString $
                                 concat ["The ", show n, "th prime number is ", show $ genPrime n]
