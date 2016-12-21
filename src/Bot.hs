@@ -99,7 +99,7 @@ sendBotMessage :: Show a => a -> Text -> BotT IO MessageResponse
 sendBotMessage chatId txt = do
   s <- get
   let textChatId = fromString $ show chatId
-  let msgReq = sendMessageRequest textChatId txt
+  let msgReq = (sendMessageRequest textChatId txt) { message_disable_web_page_preview = Just True }
   let r = sendMessage (stToken s) msgReq (stManager s)
   liftIO $ eitherThrowLog r
 

@@ -8,6 +8,7 @@ import Network.HTTP.Types.URI
 import Network.HTTP.Types.Status (statusCode)
 import Data.Aeson
 import Data.Text (Text, pack, unpack)
+import qualified Data.Text as T
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString as B
@@ -47,10 +48,15 @@ instance ToJSON ResponseBody where
 
 authToken = "debe319f92b9d2d1109a9958a18985fede11b4ff"
 
+addHttpPrefix :: Text -> Text
+addHttpPrefix t
+  | T.isPrefixOf "http://" t = t
+  | otherwise = T.append "http://" t
+
 bitly :: Text -> IO (Either Text Text)
 bitly longUrl = do
     manager <- newManager tlsManagerSettings
-    let query = [("access_token", Just authToken), ("longUrl", Just $ encodeUtf8 longUrl)]
+    let query = [("access_token", Just authToken), ("longUrl", Just $ encodeUtf8 $ addHttpPrefix longUrl)]
     r <- parseRequest "https://api-ssl.bitly.com/v3/shorten"
     let request = setQueryString query r
     response <- httpLbs request manager

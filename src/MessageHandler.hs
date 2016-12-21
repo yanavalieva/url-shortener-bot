@@ -64,7 +64,7 @@ eitherToMaybe (Left _) = Nothing
 eitherToMaybe (Right a) = Just a
 
 isUrl :: Text -> Bool
-isUrl t = T.all (/= ' ') t
+isUrl t = T.all (/= ' ') t && T.any (=='.') t
 
 fi = fromIntegral
 
