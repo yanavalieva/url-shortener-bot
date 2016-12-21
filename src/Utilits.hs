@@ -13,7 +13,7 @@ import Data.List
 getShortUrl :: Int64 -> Service -> Text -> Config -> IO Text
 getShortUrl id service url cfg = do
     hist <- findInHistory id service url cfg
-    if (null hist) then 
+    if (not $ null hist) then 
         return $ head hist
     else do
         short <- shortUrl service url

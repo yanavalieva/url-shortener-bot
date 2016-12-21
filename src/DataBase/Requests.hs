@@ -105,9 +105,3 @@ createHistoryRecord :: MonadIO m =>
      Int64 -> Service -> Text -> Text -> Config -> m Int64
 createHistoryRecord id serv src short = 
     runRequest (insertIntoHistory id serv src short)
-
-{- main = do
-    pool <- createPool
-    let cfg = Config { connections = pool }
-    runSqlPool runMigrations pool
-    findInHistory 1 Bitly "src.com" cfg -}
