@@ -19,8 +19,8 @@ import Database.Persist.Sqlite
 import Control.Monad.Reader.Class
 import System.Environment
 import Control.Monad.IO.Class
-import Data.Int
 import Data.Text hiding (map)
+import Data.Int
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader
 import GHC.Generics (Generic)
@@ -33,6 +33,7 @@ newtype App a = App {
     runApp :: ReaderT Config IO a
     } deriving (Functor, Applicative, Monad,
                 MonadIO, MonadReader Config )
+
 
 createPool :: IO ConnectionPool
 createPool = runStdoutLoggingT $ createSqlitePool "users.db3" 10
@@ -49,19 +50,19 @@ runRequest :: MonadIO m => SqlPersistT IO a -> Config -> m a
 runRequest req cfg = runReaderT (runDb req) cfg
 
 -- запрос создания пользователя
-createUser :: MonadIO m => Int64 -> Service -> ReaderT SqlBackend m Int64
+createUser :: MonadIO m => Int -> Service -> ReaderT SqlBackend m Int64
 createUser id def_serv = do
     newUser <- insert $ User id def_serv
     return $ fromSqlKey newUser
 
--- запрос добавления записи в историю
-insertIntoHistory :: MonadIO m => Int64 -> Service -> Text -> Text -> ReaderT SqlBackend m Int64
+ -- запрос добавления записи в историю
+insertIntoHistory :: MonadIO m => Int -> Service -> Text -> Text -> ReaderT SqlBackend m Int64
 insertIntoHistory id serv src short = do
     newHist <- insert $ History id serv src short
-    return $ fromSqlKey newHist
+    return $ fromSqlKey newHist 
 
 -- установка нового сервиса по умолчанию
-setNewDefault :: MonadIO m => Int64 -> Service -> Config -> m ()
+setNewDefault :: MonadIO m => Int -> Service -> Config -> m ()
 setNewDefault id serv cfg =
     runRequest (updateWhere
         [UserTelegramId ==. id]
@@ -69,11 +70,11 @@ setNewDefault id serv cfg =
     cfg
 
 -- поиск пользователя по id
-userById :: MonadIO m => Int64 -> Config -> m (Maybe (Entity User))
+userById :: MonadIO m => Int -> Config -> m (Maybe (Entity User))
 userById id cfg = runRequest (getBy $ UniqueUser id) cfg
 
 -- создание нового пользователя или поиск сервиса по умолчанию уже существующего пользователя
-createOrFindUser :: MonadIO m => Int64 -> Config -> m Service
+createOrFindUser :: MonadIO m => Int -> Config -> m Service
 createOrFindUser id cfg = do
     usr <- userById id cfg
     case usr of
@@ -83,7 +84,7 @@ createOrFindUser id cfg = do
         Just (Entity _ (User _ service)) -> return service
 
 -- поиск по истории
-findInHistory :: MonadIO m => Int64 -> Service -> Text -> Config -> m [Text]
+findInHistory :: MonadIO m => Int -> Service -> Text -> Config -> m [Text]
 findInHistory id serv src cfg =
     runRequest (selectList [
         HistoryUserId ==. id,
@@ -92,7 +93,7 @@ findInHistory id serv src cfg =
         ] []) cfg >>= return . map (\(Entity _ (History _ _ _ short)) -> short)
 
 -- замена сервиса по умолчанию
-setNewDefaultService :: MonadIO m => Int64 -> Service -> Config -> m ()
+setNewDefaultService :: MonadIO m => Int -> Service -> Config -> m ()
 setNewDefaultService id service cfg = do
     usr <- userById id cfg
     case usr of
@@ -101,10 +102,9 @@ setNewDefaultService id service cfg = do
 
 -- добавление записи в историю
 createHistoryRecord :: MonadIO m =>
-     Int64 -> Service -> Text -> Text -> Config -> m Int64
+     Int -> Service -> Text -> Text -> Config -> m Int64
 createHistoryRecord id serv src short =
     runRequest (insertIntoHistory id serv src short)
-
 
 initializeDB = do
         pool <- createPool

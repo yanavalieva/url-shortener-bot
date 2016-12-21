@@ -1,11 +1,11 @@
 User
-    telegramId Int64
+    telegramId Int
     defaultService Service
     UniqueUser telegramId
     deriving Show
 
 History
-	userId Int64
+	userId Int
     service Service
     srcUrl Text
     shortUrl Text

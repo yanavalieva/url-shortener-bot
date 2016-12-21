@@ -72,13 +72,11 @@ eitherToMaybe (Right a) = Just a
 isUrl :: Text -> Bool
 isUrl t = T.all (/= ' ') t && T.any (=='.') t
 
-fi = fromIntegral
-
 processCommand :: Int -> Config -> UserCommand -> IO Text
-processCommand (fi->uid) dbc (SetDefault s) = setDefaultService uid s dbc >> return "done!"
-processCommand (fi->uid) dbc (ShortUrl s u) = getShortUrl uid s u dbc
-processCommand (fi->uid) dbc (ShortUrlDef t) = getByDefault uid t dbc
-processCommand (fi->uid) dbc (Unknown t) = return $ T.concat ["Wrong cmd: `", t, "`"]
+processCommand uid dbc (SetDefault s) = undefined setDefaultService uid s dbc >> return "done!"
+processCommand uid dbc (ShortUrl s u) = undefined getShortUrl uid s u dbc
+processCommand uid dbc (ShortUrlDef t) = undefined getByDefault uid t dbc
+processCommand uid dbc (Unknown t) = return $ T.concat ["Wrong cmd: `", t, "`"]
 processCommand uid dbc Help = return "How I can help u?"
 processCommand uid dbc Start = return "Hello!"
 processCommand uid dbc WrongUrl = return "Wrong Url!"
