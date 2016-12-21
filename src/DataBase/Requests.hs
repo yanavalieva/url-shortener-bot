@@ -65,8 +65,8 @@ setNewDefault :: MonadIO m => Int64 -> Service -> Config -> m ()
 setNewDefault id serv cfg =  
     runRequest (updateWhere 
         [UserTelegramId ==. id] 
-        [UserDefaultService =. serv]
-    ) cfg
+        [UserDefaultService =. serv]) 
+    cfg
 
 -- поиск пользователя по id
 userById :: MonadIO m => Int64 -> Config -> m (Maybe (Entity User))
@@ -97,8 +97,7 @@ setNewDefaultService id service cfg = do
     usr <- userById id cfg
     case usr of
         Nothing -> runRequest (createUser id service) cfg >> return ()
-        Just (Entity _ (User _ service)) ->
-            setNewDefault id service cfg
+        Just u -> setNewDefault id service cfg
 
 -- добавление записи в историю
 createHistoryRecord :: MonadIO m =>
