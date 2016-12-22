@@ -51,6 +51,7 @@ authToken = "debe319f92b9d2d1109a9958a18985fede11b4ff"
 addHttpPrefix :: Text -> Text
 addHttpPrefix t
   | T.isPrefixOf "http://" t = t
+  | T.isPrefixOf "https://" t = t
   | otherwise = T.append "http://" t
 
 bitly :: Text -> IO (Either Text Text)
