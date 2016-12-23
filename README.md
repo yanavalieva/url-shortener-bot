@@ -22,6 +22,7 @@
     * [Telegram Bot API] (https://hackage.haskell.org/package/telegram-api)
     * [HTTP-requests](https://hackage.haskell.org/package/http-client)
     * [Persistent] (https://hackage.haskell.org/package/persistent) 
+6. Сервер находится в облаке Azure.   
 
 Бота можно найти здесь: telegram.me/url314bot  
 
